@@ -209,6 +209,8 @@ module Audited
       end
 
       def write_audit(attrs)
+        return if Rails.env.test?
+
         attrs[:associated] = self.send(audit_associated_with) unless audit_associated_with.nil?
         self.audit_comment = nil
         run_callbacks(:audit)  { self.audits.create(attrs) } if auditing_enabled
