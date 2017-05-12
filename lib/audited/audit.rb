@@ -24,7 +24,7 @@ module Audited
     cattr_accessor :audited_class_names
     self.audited_class_names = Set.new
 
-    serialize :audited_changes
+    serialize :old_audited_changes
 
     scope :ascending,     ->{ reorder(version: :asc) }
     scope :descending,    ->{ reorder(version: :desc)}
