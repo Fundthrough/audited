@@ -68,8 +68,23 @@ module Audited
         end
 
         attr_accessor :audit_comment
-        has_many :audits, -> do
-          order(version: :asc)
+
+        has_many :audits, ->(audited_record) do
+          namespace_conditions = if ::Audited.namespace_attribute_name
+                                   {
+            ::Audited.namespace_attribute_name =>
+              ::Audited.namespace_attribute_value
+          }
+                                 else
+                                   {}
+                                   end
+
+
+          where(
+            namespace_conditions.merge(
+              created_at: (audited_record.created_at - 1.minute)..(Time.now)
+            )
+          ).order(version: :asc)
         end, as: :auditable, class_name: Audited.audit_class.name, inverse_of: :auditable
         Audited.audit_class.audited_class_names << to_s
 
