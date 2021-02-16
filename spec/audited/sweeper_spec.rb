@@ -90,9 +90,6 @@ describe AuditsController do
 
       expect(controller.company.audits.last.service_name).to eq("RailsApp")
     end
-
-  end
-
   end
 
   describe "PUT update" do
