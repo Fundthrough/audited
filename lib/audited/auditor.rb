@@ -63,7 +63,10 @@ module Audited
         has_many :audits, ->(audited_record) do
           where(
             service_name: Rails.application.class.parent_name,
-            created_at: (audited_record.created_at - 1.minute)..(Time.now)
+            created_at: Range.new(
+              ((audited_record.created_at || Time.now)  - 1.day),
+              (Time.now + 1.day)
+            )
           ).order(version: :asc)
         end, as: :auditable, class_name: Audited.audit_class.name
 
