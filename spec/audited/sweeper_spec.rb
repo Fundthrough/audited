@@ -96,8 +96,9 @@ describe AuditsController do
     end
 
     it "should record the name for the service responsible for the change" do
-      allow(Audited).to receive(:namespace_attribute_name).and_return(:service_name)
-      allow(Audited).to receive(:namespace_attribute_value).and_return("RailsApp")
+      allow(Audited).to receive(:namespace_conditions).and_return(
+        service_name: "RailsApp"
+      )
 
       expect do
         post :create

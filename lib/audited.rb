@@ -3,7 +3,7 @@ require 'active_record'
 module Audited
   class << self
     attr_accessor :ignored_attributes, :current_user_method, :max_audits, :auditing_enabled,
-                  :namespace_attribute_name, :namespace_attribute_value
+                  :namespace_conditions
     attr_writer :audit_class
 
     def audit_class
@@ -20,6 +20,7 @@ module Audited
   end
 
   @ignored_attributes = %w(lock_version created_at updated_at created_on updated_on)
+  @namespace_conditions = {}
 
   @current_user_method = :current_user
   @auditing_enabled = true
