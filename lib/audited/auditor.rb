@@ -64,7 +64,7 @@ module Audited
           where(
             service_name: Rails.application.class.parent_name,
             created_at: Range.new(
-              ((audited_record.created_at || Time.now)  - 1.day),
+              ((audited_record.created_at || Time.now) - 1.day),
               (Time.now + 1.day)
             )
           ).order(version: :asc)
