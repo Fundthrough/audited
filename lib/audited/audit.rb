@@ -57,7 +57,7 @@ module Audited
 
     scope :not_before_created_at, ->(audited_record) do
       where(created_at: Range.new(
-        ((audited_record.created_at || Time.now)  - 1.day),
+        ((audited_record.try(:created_at) || Time.now)  - 1.day),
         (Time.now + 1.day)
       ))
     end
