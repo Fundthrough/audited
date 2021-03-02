@@ -47,7 +47,6 @@ ActiveRecord::Schema.define do
     t.column :name, :string
     t.column :owner_id, :integer
     t.column :type, :string
-    t.column :created_at, :datetime
   end
 
   create_table :authors do |t|
