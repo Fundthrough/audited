@@ -21,11 +21,11 @@ module Audited
     def dev_test_schema
       proc do
         create_table :audits do |t|
-          t.column :auditable_id, :integer
+          t.column :auditable_id, :string
           t.column :auditable_type, :string
-          t.column :associated_id, :integer
+          t.column :associated_id, :string
           t.column :associated_type, :string
-          t.column :user_id, :integer
+          t.column :user_id, :string
           t.column :user_type, :string
           t.column :username, :string
           t.column :action, :string
