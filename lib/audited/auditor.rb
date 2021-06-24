@@ -70,13 +70,7 @@ module Audited
         attr_accessor :audit_comment
 
         has_many :audits, ->(audited_record) do
-          where(
-            service_name: Rails.application.class.parent_name,
-            created_at: Range.new(
-              ((audited_record.try(:created_at) || Time.now) - 1.day),
-              (Time.now + 1.day)
-            )
-          ).order(version: :asc)
+          namespaced.not_before_created_at(audited_record).order(version: :asc)
         end, as: :auditable, class_name: Audited.audit_class.name, inverse_of: :auditable
 
         Audited.audit_class.audited_class_names << to_s

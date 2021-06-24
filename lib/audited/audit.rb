@@ -40,9 +40,7 @@ module Audited
 
     before_create :set_version_number, :set_audit_user, :set_request_uuid, :set_remote_address
     before_create do
-      if ::Audited.namespace_attribute_name
-        self.send("#{::Audited.namespace_attribute_name}=", ::Audited.namespace_attribute_value)
-      end
+      self.assign_attributes(::Audited.namespace_conditions)
     end
 
     cattr_accessor :audited_class_names
@@ -55,7 +53,14 @@ module Audited
     scope :creates,       ->{ where(action: 'create')}
     scope :updates,       ->{ where(action: 'update')}
     scope :destroys,      ->{ where(action: 'destroy')}
+    scope :namespaced,    ->{ where(Audited.namespace_conditions)}
 
+    scope :not_before_created_at, ->(audited_record) do
+      where(created_at: Range.new(
+        ((audited_record.try(:created_at) || Time.now)  - 1.day),
+        (Time.now + 1.day)
+      ))
+    end
     scope :up_until,      ->(date_or_time){ where("created_at <= ?", date_or_time) }
     scope :from_version,  ->(version){ where('version >= ?', version) }
     scope :to_version,    ->(version){ where('version <= ?', version) }
@@ -102,7 +107,7 @@ module Audited
         auditable_type.constantize.create!(audited_changes)
       when 'update'
         # changes back attributes
-        auditable.update_attributes!(audited_changes.transform_values(&:first))
+        auditable.update!(audited_changes.transform_values(&:first))
       else
         raise StandardError, "invalid action given #{action}"
       end
