@@ -11,8 +11,5 @@ jobs:
       - checkout
       - ruby/bundle-install
       - run:
-          name: rubocop on last 5 commits
-          command: git diff-tree -r --no-commit-id --name-only HEAD HEAD~5 | xargs ls -d 2>/dev/null | xargs bundle exec rubocop --force-exclusion
-      - run:
           name: rspec
           command: bundle exec rspec
