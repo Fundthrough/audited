@@ -53,7 +53,7 @@ module Audited
     scope :creates,       ->{ where(action: 'create')}
     scope :updates,       ->{ where(action: 'update')}
     scope :destroys,      ->{ where(action: 'destroy')}
-    scope :namespaced,    ->{ where(Audited.namespace_conditions)}
+    scope :namespaced,    ->{ where( {service_name: "Fundthrough"} )}
 
     scope :not_before_created_at, ->(audited_record) do
       where(created_at: Range.new(
@@ -67,6 +67,7 @@ module Audited
     scope :auditable_finder, ->(auditable_id, auditable_type){ where(auditable_id: auditable_id, auditable_type: auditable_type, service_name: Rails.application.class.parent_name)}
     # Return all audits older than the current one.
     def ancestors
+      Rails.logger.info "calling ascending.auditable_finder"
       self.class.ascending.auditable_finder(auditable_id, auditable_type).to_version(version)
     end
 
@@ -180,6 +181,7 @@ module Audited
     private
 
     def set_version_number
+      Rails.logger.info "self.class.auditable_finder"
       max = self.class.auditable_finder(auditable_id, auditable_type).maximum(:version) || 0
       self.version = max + 1
     end
