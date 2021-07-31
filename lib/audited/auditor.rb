@@ -70,6 +70,8 @@ module Audited
         attr_accessor :audit_comment
 
         has_many :audits, ->(audited_record) do
+          Rails.logger.info "audited_record: #{audited_record}"
+          puts "-----  has_many :audits, ->(audited_record) do -----"
           namespaced.not_before_created_at(audited_record).order(version: :asc)
         end, as: :auditable, class_name: Audited.audit_class.name, inverse_of: :auditable
 

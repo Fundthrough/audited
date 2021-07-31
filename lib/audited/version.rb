@@ -1,3 +1,3 @@
 module Audited
-  VERSION = "4.8.3.0"
+  VERSION = "4.8.3.1"
 end
