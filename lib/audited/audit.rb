@@ -178,8 +178,7 @@ module Audited
     private
 
     def set_version_number
-      max = self.class.namespaced.not_before_created_at(auditable).auditable_finder(auditable_id, auditable_type).maximum(:version) || 0
-      self.version = max + 1
+      self.version = DateTime.now.strftime('%Q').to_i
     end
 
     def set_audit_user
