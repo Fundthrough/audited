@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Audited
   # Specify this act if you want changes to your model to be saved in an
   # audit table.  This assumes there is an audits table ready.
@@ -11,7 +13,7 @@ module Audited
   #
   # See <tt>Audited::Auditor::ClassMethods#audited</tt>
   # for configuration options
-  module Auditor #:nodoc:
+  module Auditor # :nodoc:
     extend ActiveSupport::Concern
 
     CALLBACKS = [:audit_create, :audit_update, :audit_destroy]
@@ -34,6 +36,16 @@ module Audited
       # * +require_comment+ - Ensures that audit_comment is supplied before
       #   any create, update or destroy operation.
       # * +max_audits+ - Limits the number of stored audits.
+
+      # * +redacted+ - Changes to these fields will be logged, but the values
+      #   will not. This is useful, for example, if you wish to audit when a
+      #   password is changed, without saving the actual password in the log.
+      #   To store values as something other than '[REDACTED]', pass an argument
+      #   to the redaction_value option.
+      #
+      #     class User < ActiveRecord::Base
+      #       audited redacted: :password, redaction_value: SecureRandom.uuid
+      #     end
       #
       # * +if+ - Only audit the model when the given function returns true
       # * +unless+ - Only audit the model when the given function returns false
@@ -47,36 +59,36 @@ module Audited
       #     end
       #
       def audited(options = {})
-        # don't allow multiple calls
-        return if included_modules.include?(Audited::Auditor::AuditedInstanceMethods)
+        audited? ? update_audited_options(options) : set_audit(options)
+      end
 
+      private
+
+      def audited?
+        included_modules.include?(Audited::Auditor::AuditedInstanceMethods)
+      end
+
+      def set_audit(options)
         extend Audited::Auditor::AuditedClassMethods
         include Audited::Auditor::AuditedInstanceMethods
 
         class_attribute :audit_associated_with, instance_writer: false
-        class_attribute :audited_options,       instance_writer: false
+        class_attribute :audited_options, instance_writer: false
         attr_accessor :audit_version, :audit_comment
 
-        self.audited_options = options
-        normalize_audited_options
-
-        self.audit_associated_with = audited_options[:associated_with]
+        set_audited_options(options)
 
         if audited_options[:comment_required]
           validate :presence_of_audit_comment
           before_destroy :require_comment if audited_options[:on].include?(:destroy)
         end
 
-        attr_accessor :audit_comment
-
-        has_many :audits, ->(audited_record) do
-          namespaced.not_before_created_at(audited_record).order(version: :asc)
-        end, as: :auditable, class_name: Audited.audit_class.name, inverse_of: :auditable
-
+        has_many :audits, -> { order(version: :asc) }, as: :auditable, class_name: Audited.audit_class.name, inverse_of: :auditable
         Audited.audit_class.audited_class_names << to_s
 
-        after_create :audit_create    if audited_options[:on].include?(:create)
-        before_update :audit_update   if audited_options[:on].include?(:update)
+        after_create :audit_create if audited_options[:on].include?(:create)
+        before_update :audit_update if audited_options[:on].include?(:update)
+        after_touch :audit_touch if audited_options[:on].include?(:touch) && ::ActiveRecord::VERSION::MAJOR >= 6
         before_destroy :audit_destroy if audited_options[:on].include?(:destroy)
 
         # Define and set after_audit and around_audit callbacks. This might be useful if you want
@@ -92,18 +104,22 @@ module Audited
       def has_associated_audits
         has_many :associated_audits, as: :associated, class_name: Audited.audit_class.name
       end
+
+      def update_audited_options(new_options)
+        previous_audit_options = self.audited_options
+        set_audited_options(new_options)
+        self.reset_audited_columns
+      end
+
+      def set_audited_options(options)
+        self.audited_options = options
+        normalize_audited_options
+        self.audit_associated_with = audited_options[:associated_with]
+      end
     end
 
     module AuditedInstanceMethods
-      # Deprecate version attribute in favor of audit_version attribute – preparing for eventual removal.
-      def method_missing(method_name, *args, &block)
-        if method_name == :version
-          ActiveSupport::Deprecation.warn("`version` attribute has been changed to `audit_version`. This attribute will be removed.")
-          audit_version
-        else
-          super
-        end
-      end
+      REDACTED = "[REDACTED]"
 
       # Temporarily turns off auditing while saving.
       def save_without_auditing
@@ -145,7 +161,7 @@ module Audited
       def revisions(from_version = 1)
         return [] unless audits.from_version(from_version).exists?
 
-        all_audits = audits.select([:audited_changes, :version]).to_a
+        all_audits = audits.select([:audited_changes, :version, :action]).to_a
         targeted_audits = all_audits.select { |audit| audit.version >= from_version }
 
         previous_attributes = reconstruct_attributes(all_audits - targeted_audits)
@@ -159,7 +175,7 @@ module Audited
       # Get a specific revision specified by the version number, or +:previous+
       # Returns nil for versions greater than revisions count
       def revision(version)
-        if version == :previous || self.audits.last.version >= version
+        if version == :previous || audits.last.version >= version
           revision_with Audited.audit_class.reconstruct_attributes(audits_to(version))
         end
       end
@@ -173,15 +189,16 @@ module Audited
       # List of attributes that are audited.
       def audited_attributes
         audited_attributes = attributes.except(*self.class.non_audited_columns)
+        audited_attributes = redact_values(audited_attributes)
+        audited_attributes = filter_encrypted_attrs(audited_attributes)
         normalize_enum_changes(audited_attributes)
       end
 
       # Returns a list combined of record audits and associated audits.
       def own_and_associated_audits
-        Audited.audit_class.unscoped
-        .where('(auditable_type = :type AND auditable_id = :id) OR (associated_type = :type AND associated_id = :id)',
-          type: self.class.name, id: id)
-        .order(created_at: :desc)
+        Audited.audit_class.unscoped.where(auditable: self)
+          .or(Audited.audit_class.unscoped.where(associated: self))
+          .order(created_at: :desc)
       end
 
       # Combine multiple audits into one.
@@ -191,8 +208,13 @@ module Audited
         combine_target.comment = "#{combine_target.comment}\nThis audit is the result of multiple audits being combined."
 
         transaction do
-          combine_target.save!
-          audits_to_combine.unscope(:limit).where("version < ?", combine_target.version).delete_all
+          begin
+            combine_target.save!
+            audits_to_combine.unscope(:limit).where("version < ?", combine_target.version).delete_all
+          rescue ActiveRecord::Deadlocked
+            # Ignore Deadlocks, if the same record is getting its old audits combined more than once at the same time then
+            # both combining operations will be the same. Ignoring this error allows one of the combines to go through successfully.
+          end
         end
       end
 
@@ -201,12 +223,12 @@ module Audited
       def revision_with(attributes)
         dup.tap do |revision|
           revision.id = id
-          revision.send :instance_variable_set, '@new_record', destroyed?
-          revision.send :instance_variable_set, '@persisted', !destroyed?
-          revision.send :instance_variable_set, '@readonly', false
-          revision.send :instance_variable_set, '@destroyed', false
-          revision.send :instance_variable_set, '@_destroyed', false
-          revision.send :instance_variable_set, '@marked_for_destruction', false
+          revision.send :instance_variable_set, "@new_record", destroyed?
+          revision.send :instance_variable_set, "@persisted", !destroyed?
+          revision.send :instance_variable_set, "@readonly", false
+          revision.send :instance_variable_set, "@destroyed", false
+          revision.send :instance_variable_set, "@_destroyed", false
+          revision.send :instance_variable_set, "@marked_for_destruction", false
           Audited.audit_class.assign_revision_attributes(revision, attributes)
 
           # Remove any association proxies so that they will be recreated
@@ -225,8 +247,17 @@ module Audited
 
       private
 
-      def audited_changes
-        all_changes = respond_to?(:changes_to_save) ? changes_to_save : changes
+      def audited_changes(for_touch: false, exclude_readonly_attrs: false)
+        all_changes = if for_touch
+          previous_changes
+        elsif respond_to?(:changes_to_save)
+          changes_to_save
+        else
+          changes
+        end
+
+        all_changes = all_changes.except(*self.class.readonly_attributes.to_a) if exclude_readonly_attrs
+
         filtered_changes = \
           if audited_options[:only].present?
             all_changes.slice(*self.class.audited_columns)
@@ -235,16 +266,28 @@ module Audited
           end
 
         filtered_changes = normalize_enum_changes(filtered_changes)
+
+        if for_touch && (last_audit = audits.last&.audited_changes)
+          filtered_changes.reject! do |k, v|
+            last_audit[k].to_json == v.to_json ||
+            last_audit[k].to_json == v[1].to_json
+          end
+        end
+
+        filtered_changes = redact_values(filtered_changes)
+        filtered_changes = filter_encrypted_attrs(filtered_changes)
         filtered_changes.to_hash
       end
 
       def normalize_enum_changes(changes)
+        return changes if Audited.store_synthesized_enums
+
         self.class.defined_enums.each do |name, values|
           if changes.has_key?(name)
             changes[name] = \
               if changes[name].is_a?(Array)
                 changes[name].map { |v| values[v] }
-              elsif rails_below?('5.0')
+              elsif rails_below?("5.0")
                 changes[name]
               else
                 values[changes[name]]
@@ -254,47 +297,90 @@ module Audited
         changes
       end
 
+      def redact_values(filtered_changes)
+        filter_attr_values(
+          audited_changes: filtered_changes,
+          attrs: Array(audited_options[:redacted]).map(&:to_s),
+          placeholder: audited_options[:redaction_value] || REDACTED
+        )
+      end
+
+      def filter_encrypted_attrs(filtered_changes)
+        filter_attr_values(
+          audited_changes: filtered_changes,
+          attrs: respond_to?(:encrypted_attributes) ? Array(encrypted_attributes).map(&:to_s) : []
+        )
+      end
+
+      # Replace values for given attrs to a placeholder and return modified hash
+      #
+      # @param audited_changes [Hash] Hash of changes to be saved to audited version record
+      # @param attrs [Array<String>] Array of attrs, values of which will be replaced to placeholder value
+      # @param placeholder [String] Placeholder to replace original attr values
+      def filter_attr_values(audited_changes: {}, attrs: [], placeholder: "[FILTERED]")
+        attrs.each do |attr|
+          next unless audited_changes.key?(attr)
+
+          changes = audited_changes[attr]
+          values = changes.is_a?(Array) ? changes.map { placeholder } : placeholder
+
+          audited_changes[attr] = values
+        end
+
+        audited_changes
+      end
+
       def rails_below?(rails_version)
         Gem::Version.new(Rails::VERSION::STRING) < Gem::Version.new(rails_version)
       end
 
       def audits_to(version = nil)
         if version == :previous
-          version = if self.audit_version
-                      self.audit_version - 1
-                    else
-                      previous = audits.descending.offset(1).first
-                      previous ? previous.version : 1
-                    end
+          version = if audit_version
+            audit_version - 1
+          else
+            previous = audits.descending.offset(1).first
+            previous ? previous.version : 1
+          end
         end
         audits.to_version(version)
       end
 
       def audit_create
-        write_audit(action: 'create', audited_changes: audited_attributes,
-                    comment: audit_comment)
+        write_audit(action: "create", audited_changes: audited_attributes,
+          comment: audit_comment)
       end
 
       def audit_update
-        unless (changes = audited_changes).empty? && (audit_comment.blank? || audited_options[:update_with_comment_only] == false)
-          write_audit(action: 'update', audited_changes: changes,
-                      comment: audit_comment)
+        unless (changes = audited_changes(exclude_readonly_attrs: true)).empty? && (audit_comment.blank? || audited_options[:update_with_comment_only] == false)
+          write_audit(action: "update", audited_changes: changes,
+            comment: audit_comment)
+        end
+      end
+
+      def audit_touch
+        unless (changes = audited_changes(for_touch: true, exclude_readonly_attrs: true)).empty?
+          write_audit(action: "update", audited_changes: changes,
+            comment: audit_comment)
         end
       end
 
       def audit_destroy
-        write_audit(action: 'destroy', audited_changes: audited_attributes,
-                    comment: audit_comment) unless new_record?
+        unless new_record?
+          write_audit(action: "destroy", audited_changes: audited_attributes,
+            comment: audit_comment)
+        end
       end
 
       def write_audit(attrs)
-        attrs[:associated] = send(audit_associated_with) unless audit_associated_with.nil?
         self.audit_comment = nil
 
         if auditing_enabled
+          attrs[:associated] = send(audit_associated_with) unless audit_associated_with.nil?
+
           run_callbacks(:audit) {
             audit = audits.create(attrs)
-            combine_audits_if_needed if attrs[:action] != 'create'
+            combine_audits_if_needed if attrs[:action] != "create"
             audit
           }
         end
@@ -302,28 +388,40 @@ module Audited
 
       def presence_of_audit_comment
         if comment_required_state?
-          errors.add(:audit_comment, "Comment can't be blank!") unless audit_comment.present?
+          errors.add(:audit_comment, :blank) unless audit_comment.present?
         end
       end
 
       def comment_required_state?
         auditing_enabled &&
-          ((audited_options[:on].include?(:create) && self.new_record?) ||
-          (audited_options[:on].include?(:update) && self.persisted? && self.changed?))
+          audited_changes.present? &&
+          ((audited_options[:on].include?(:create) && new_record?) ||
+          (audited_options[:on].include?(:update) && persisted? && changed?))
       end
 
       def combine_audits_if_needed
-        max_audits = audited_options[:max_audits]
+        max_audits = evaluate_max_audits
+
         if max_audits && (extra_count = audits.count - max_audits) > 0
           audits_to_combine = audits.limit(extra_count + 1)
           combine_audits(audits_to_combine)
         end
       end
 
+      def evaluate_max_audits
+        max_audits = case (option = audited_options[:max_audits])
+        when Proc then option.call
+        when Symbol then send(option)
+        else
+          option
+        end
+
+        Integer(max_audits).abs if max_audits
+      end
+
       def require_comment
         if auditing_enabled && audit_comment.blank?
-          errors.add(:audit_comment, "Comment can't be blank!")
-          return false if Rails.version.start_with?('4.')
+          errors.add(:audit_comment, :blank)
           throw(:abort)
         end
       end
@@ -333,7 +431,7 @@ module Audited
       end
 
       def auditing_enabled
-        return run_conditional_check(audited_options[:if]) &&
+        run_conditional_check(audited_options[:if]) &&
           run_conditional_check(audited_options[:unless], matching: false) &&
           self.class.auditing_enabled
       end
@@ -351,7 +449,7 @@ module Audited
         audits.each { |audit| attributes.merge!(audit.new_attributes) }
         attributes
       end
-    end # InstanceMethods
+    end
 
     module AuditedClassMethods
       # Returns an array of columns that are audited. See non_audited_columns
@@ -376,7 +474,7 @@ module Audited
       #   end
       #
       def without_auditing
-        auditing_was_enabled = auditing_enabled
+        auditing_was_enabled = class_auditing_enabled
         disable_auditing
         yield
       ensure
@@ -390,7 +488,7 @@ module Audited
       #   end
       #
       def with_auditing
-        auditing_was_enabled = auditing_enabled
+        auditing_was_enabled = class_auditing_enabled
         enable_auditing
         yield
       ensure
@@ -414,7 +512,7 @@ module Audited
       end
 
       def auditing_enabled
-        Audited.store.fetch("#{table_name}_auditing_enabled", true) && Audited.auditing_enabled
+        class_auditing_enabled && Audited.auditing_enabled
       end
 
       def auditing_enabled=(val)
@@ -429,11 +527,10 @@ module Audited
 
       def normalize_audited_options
         audited_options[:on] = Array.wrap(audited_options[:on])
-        audited_options[:on] = [:create, :update, :destroy] if audited_options[:on].empty?
+        audited_options[:on] = ([:create, :update, :touch, :destroy] - Audited.ignored_default_callbacks) if audited_options[:on].empty?
         audited_options[:only] = Array.wrap(audited_options[:only]).map(&:to_s)
         audited_options[:except] = Array.wrap(audited_options[:except]).map(&:to_s)
-        max_audits = audited_options[:max_audits] || Audited.max_audits
-        audited_options[:max_audits] = Integer(max_audits).abs if max_audits
+        audited_options[:max_audits] ||= Audited.max_audits
       end
 
       def calculate_non_audited_columns
@@ -444,6 +541,15 @@ module Audited
         else
           default_ignored_attributes
         end
+      end
+
+      def class_auditing_enabled
+        Audited.store.fetch("#{table_name}_auditing_enabled", true)
+      end
+
+      def reset_audited_columns
+        @audited_columns = nil
+        @non_audited_columns = nil
       end
     end
   end

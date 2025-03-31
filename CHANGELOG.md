@@ -1,6 +1,193 @@
 # Audited ChangeLog
 
-## Unreleased
+### 5.8.0 (2024-11-08)
+- Allow calling audited multiple times - @mohammednasser-32
+  [734](https://github.com/collectiveidea/audited/pull/734)  
+- Relax gemspec to allow Rails 8.1 - @BranLiang
+  [738](https://github.com/collectiveidea/audited/pull/738)
+
+### 5.7.0 (2024-08-13)
+
+- Support for Rails 7.2 and Ruby 3.3, and testing cleanups - @mattbrictson
+  [#723](https://github.com/collectiveidea/audited/pull/723)
+- Allow max_audits to be a proc or symbol - @gmhawash
+  [#718](https://github.com/collectiveidea/audited/pull/718)
+- Support Rails 8 - @fernandomenolli
+  [#717](https://github.com/collectiveidea/audited/pull/717)
+
+
+### 5.6.0 (2024-04-05)
+
+- Removed support for Rails 5.0 and 5.1.
+- Replace RequestStore with ActiveSupport::CurrentAttributes - @punkisdead
+  [#702](https://github.com/collectiveidea/audited/pull/702)
+
+### 5.5.0 (2024-04-02)
+
+- Bad release. Same code as 5.4.1. Use 5.6.0 for updated features.
+
+### 5.4.3 (2024-01-11)
+
+- Ignore readonly columns in audit - @sriddbs
+  [#692](https://github.com/collectiveidea/audited/pull/692)
+- Robustify Rails version checks - @blaet
+  [#689](https://github.com/collectiveidea/audited/pull/689)
+-  Ignore callbacks if not specifed on the model
+  [#679](https://github.com/collectiveidea/audited/pull/679)
+
+## 5.4.2 (2023-11-30)
+
+- Revert replacing RequetStore with ActiveSupport::CurrentAttributes until it is fully tested.
+
+## 5.4.1 (2023-11-30)
+
+- Replace RequestStore with ActiveSupport::CurrentAttributes - @the-spectator
+  [#673](https://github.com/collectiveidea/audited/pull/673/)
+- Don't require railtie when used outside of Rails - @nicduke38degrees
+  [#665](https://github.com/collectiveidea/audited/pull/665)
+
+## 5.4.0 (2023-09-30)
+
+- Add Rails 7.1 support - @yuki24
+  [#686](https://github.com/collectiveidea/audited/pull/686)
+
+## 5.3.3 (2023-03-24)
+
+- Use RequestStore instead of Thread.current for thread-safe requests - @tiagocassio
+  [#669](https://github.com/c ollectiveidea/audited/pull/669)
+- Clean up Touch audits - @mcyoung, @akostadinov
+  [#668](https://github.com/collectiveidea/audited/pull/668)
+
+## 5.3.2 (2023-02-22)
+
+- Touch audit bug fixes - @mcyoung
+  [#662](https://github.com/collectiveidea/audited/pull/662)
+
+## 5.3.1 (2023-02-21)
+
+- Ensure touch support doesn't cause double audits - @mcyoung
+  [#660](https://github.com/collectiveidea/audited/pull/660)
+- Testing Improvements - @vlad-psh
+  [#628](https://github.com/collectiveidea/audited/pull/628)
+- Testing Improvements - @mcyoung
+  [#658](https://github.com/collectiveidea/audited/pull/658)
+
+## 5.3.0 (2023-02-14)
+
+- Audit touch calls - @mcyoung
+  [#657](https://github.com/collectiveidea/audited/pull/657)
+- Allow using with Padrino and other non-Rails projects - @nicduke38degrees
+  [#655](https://github.com/collectiveidea/audited/pull/655)
+- Testing updates - @jdufresne
+  [#652](https://github.com/collectiveidea/audited/pull/652)
+  [#653](https://github.com/collectiveidea/audited/pull/653)
+
+## 5.2.0 (2023-01-23)
+
+Improved
+
+- config.audit_class can take a string or constant - @rocket-turtle
+  Fixes overzealous change in 5.1.0 where it only took a string.
+  [#648](https://github.com/collectiveidea/audited/pull/648)
+- README link fix - @jeremiahlukus
+  [#646](https://github.com/collectiveidea/audited/pull/646)
+- Typo fix in GitHub Actions - @jdufresne
+  [#644](https://github.com/collectiveidea/audited/pull/644)
+
+## 5.1.0 (2022-12-23)
+
+Changed
+
+- config.audit_class takes a string - @simmerz
+  [#609](https://github.com/collectiveidea/audited/pull/609)
+- Filter encrypted attributes automatically - @vlad-psh
+  [#630](https://github.com/collectiveidea/audited/pull/630)
+
+Improved
+
+- README improvements - @jess, @mstroming
+  [#605](https://github.com/collectiveidea/audited/pull/605)
+  [#640](https://github.com/collectiveidea/audited/issues/640)
+- Ignore deadlocks in concurrent audit combinations - @Crammaman
+  [#621](https://github.com/collectiveidea/audited/pull/621)
+- Fix timestamped_migrations deprecation warning - @shouichi
+  [#624](https://github.com/collectiveidea/audited/pull/624)
+- Ensure audits are re-enabled after blocks - @dcorlett
+  [#632](https://github.com/collectiveidea/audited/pull/632)
+- Replace raw string where clause with query methods - @macowie
+  [#642](https://github.com/collectiveidea/audited/pull/642)
+- Test against more Ruby/Rails Versions - @enomotodev, @danielmorrison
+  [#610](https://github.com/collectiveidea/audited/pull/610)
+  [#643](https://github.com/collectiveidea/audited/pull/643)
+
+## 5.0.2 (2021-09-16)
+
+Added
+
+- Relax ActiveRecord version constraint to support Rails 7
+  [#597](https://github.com/collectiveidea/audited/pull/597)
+
+Improved
+
+- Improve loading - @mvastola
+  [#592](https://github.com/collectiveidea/audited/pull/592)
+- Update README - @danirod, @clement1234
+  [#596](https://github.com/collectiveidea/audited/pull/596)
+  [#594](https://github.com/collectiveidea/audited/pull/594)
+
+
+## 5.0.1 (2021-06-11)
+
+Improved
+
+- Don't load associated model when auditing is disabled - @nut4k1
+  [#584](https://github.com/collectiveidea/audited/pull/584)
+
+## 5.0.0 (2021-06-10)
+
+Improved
+
+- Fixes an issue where array attributes were not deserialized properly - @cfeckardt, @yuki24
+  [#448](https://github.com/collectiveidea/audited/pull/448)
+  [#576](https://github.com/collectiveidea/audited/pull/576)
+- Improve error message on audit_comment and allow for i18n override - @james
+  [#523](https://github.com/collectiveidea/audited/pull/523/)
+- Don't require a comment if only non-audited fields are changed - @james
+  [#522](https://github.com/collectiveidea/audited/pull/522/)
+- Readme updates - @gourshete
+  [#525](https://github.com/collectiveidea/audited/pull/525)
+- Allow restoring previous enum behavior with flag - @travisofthenorth
+  [#526](https://github.com/collectiveidea/audited/pull/526)
+- Follow Rails Autoloading conventions - @duncanjbrown
+  [#532](https://github.com/collectiveidea/audited/pull/532)
+- Fix own_and_associated_audits for STI Models - @eric-hemasystems
+  [#533](https://github.com/collectiveidea/audited/pull/533)
+- Rails 6.1 Improvements - @okuramasafumi, @marcrohloff
+  [#563](https://github.com/collectiveidea/audited/pull/563)
+  [#544](https://github.com/collectiveidea/audited/pull/544)
+- Use Thread local variables instead of Fibers - @arathunku
+  [#568](https://github.com/collectiveidea/audited/pull/568)
+
+Changed
+
+- Drop support for Rails 4 - @travisofthenorth
+  [#527](https://github.com/collectiveidea/audited/pull/527)
+
+## 4.10.0 (2021-01-07)
+
+Added
+
+- Add redacted option
+  [#485](https://github.com/collectiveidea/audited/pull/485)
+- Rails 6.1. support
+  [#554](https://github.com/collectiveidea/audited/pull/554)
+  [#559](https://github.com/collectiveidea/audited/pull/559)
+
+Improved
+
+- Avoid extra query on first audit version
+  [#513](https://github.com/collectiveidea/audited/pull/513)
+
 
 ## 4.9.0 (2019-07-17)
 
