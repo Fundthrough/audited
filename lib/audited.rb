@@ -15,7 +15,9 @@ module Audited
       :ignored_attributes,
       :ignored_default_callbacks,
       :max_audits,
-      :store_synthesized_enums
+      :store_synthesized_enums,
+      :namespace_conditions
+
     attr_writer :audit_class
 
     def audit_class
@@ -32,10 +34,6 @@ module Audited
 
     def store
       RequestStore.audited_store ||= {}
-    end
-
-    def config
-      yield(self)
     end
 
     def config
@@ -68,6 +66,7 @@ module Audited
 
   @ignored_attributes = %w[lock_version created_at updated_at created_on updated_on]
   @ignored_default_callbacks = []
+  @namespace_conditions = {}
 
   @current_user_method = :current_user
   @auditing_enabled = true
