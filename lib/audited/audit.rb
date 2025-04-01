@@ -45,6 +45,9 @@ module Audited
     belongs_to :associated, polymorphic: true
 
     before_create :set_version_number, :set_audit_user, :set_request_uuid, :set_remote_address
+    before_create do
+      self.assign_attributes(::Audited.namespace_conditions)
+    end
 
     cattr_accessor :audited_class_names
     self.audited_class_names = Set.new
@@ -60,6 +63,8 @@ module Audited
     scope :creates, -> { where(action: "create") }
     scope :updates, -> { where(action: "update") }
     scope :destroys, -> { where(action: "destroy") }
+    scope :namespaced,    ->{ where(Audited.namespace_conditions)}
+
     scope :not_before_created_at, ->(audited_record) do
       where(created_at: Range.new(
         ((audited_record.try(:created_at) || Time.now)  - 1.day),
