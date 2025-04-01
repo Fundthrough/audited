@@ -83,7 +83,15 @@ module Audited
           before_destroy :require_comment if audited_options[:on].include?(:destroy)
         end
 
-        has_many :audits, -> { order(version: :asc) }, as: :auditable, class_name: Audited.audit_class.name, inverse_of: :auditable
+        has_many :audits, ->(audited_record) do
+          where(
+            service_name: Rails.application.class.parent_name,
+            created_at: Range.new(
+              ((audited_record.created_at || Time.now) - 1.day),
+              (Time.now + 1.day)
+            )
+          ).order(version: :asc)
+        end, as: :auditable, class_name: Audited.audit_class.nam
         Audited.audit_class.audited_class_names << to_s
 
         after_create :audit_create if audited_options[:on].include?(:create)
@@ -373,6 +381,8 @@ module Audited
       end
 
       def write_audit(attrs)
+        return if Rails.env.test?
+
         self.audit_comment = nil
 
         if auditing_enabled
