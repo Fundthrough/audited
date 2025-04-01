@@ -7,7 +7,6 @@ module Models
       audited except: :password
       attribute :non_column_attr if Rails.gem_version >= Gem::Version.new("5.1")
       attr_protected :logins if respond_to?(:attr_protected)
-      enum status: { active: 0, reliable: 1, banned: 2 }
 
       if Rails.gem_version >= Gem::Version.new("7.2")
         enum :status, {active: 0, reliable: 1, banned: 2}

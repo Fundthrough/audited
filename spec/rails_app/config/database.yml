@@ -22,5 +22,5 @@ mysql: &MYSQL
   database: audited_test
   charset: utf8
 
-gemtest:
+test:
   <<: *<%= ENV['DB'] || 'SQLITE3MEM' %>
