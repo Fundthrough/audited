@@ -40,6 +40,7 @@ module Audited
       yield(self)
     end
 
+    # Fundthrough internal code to create the audits table with service_name column
     def dev_test_schema
       proc do
         create_table :audits do |t|

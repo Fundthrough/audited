@@ -45,6 +45,7 @@ module Audited
     belongs_to :associated, polymorphic: true
 
     before_create :set_version_number, :set_audit_user, :set_request_uuid, :set_remote_address
+    # Fundthrough internal code to allow setting namespace conditions from config, currently used to set `service_name` value
     before_create do
       self.assign_attributes(::Audited.namespace_conditions)
     end
@@ -75,7 +76,7 @@ module Audited
     scope :up_until, ->(date_or_time) { where("created_at <= ?", date_or_time) }
     scope :from_version, ->(version) { where("version >= ?", version) }
     scope :to_version, ->(version) { where("version <= ?", version) }
-    scope :auditable_finder, ->(auditable_id, auditable_type) { where(auditable_id: auditable_id, auditable_type: auditable_type) }
+    scope :auditable_finder, ->(auditable_id, auditable_type) { namespaced.where(auditable_id: auditable_id, auditable_type: auditable_type) }
     # Return all audits older than the current one.
     def ancestors
       self.class.ascending.auditable_finder(auditable_id, auditable_type).to_version(version)
@@ -207,7 +208,7 @@ module Audited
         self.version = 1
       else
         collection = (ActiveRecord::VERSION::MAJOR >= 6) ? self.class.unscoped : self.class
-        max = collection.auditable_finder(auditable_id, auditable_type).maximum(:version) || 0
+        max = collection.namespaced.not_before_created_at(auditable).auditable_finder(auditable_id, auditable_type).maximum(:version) || 0
         self.version = max + 1
       end
     end
