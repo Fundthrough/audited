@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Audited
   module RspecMatchers
     # Ensure that the model is audited.
@@ -78,9 +80,9 @@ module Audited
       def description
         description = "audited"
         description += " associated with #{@options[:associated_with]}" if @options.key?(:associated_with)
-        description += " only => #{@options[:only].join ', '}"          if @options.key?(:only)
-        description += " except => #{@options[:except].join(', ')}"     if @options.key?(:except)
-        description += " requires audit_comment"                        if @options.key?(:comment_required)
+        description += " only => #{@options[:only].join ", "}" if @options.key?(:only)
+        description += " except => #{@options[:except].join(", ")}" if @options.key?(:except)
+        description += " requires audit_comment" if @options.key?(:comment_required)
 
         description
       end

@@ -9,7 +9,8 @@ sqlite3: &SQLITE
 postgresql: &POSTGRES
   adapter: postgresql
   username: postgres
-  password:
+  password: postgres
+  host: localhost
   database: audited_test
   min_messages: ERROR
 
@@ -17,9 +18,9 @@ mysql: &MYSQL
   adapter: mysql2
   host: localhost
   username: root
-  password:
+  password: root
   database: audited_test
   charset: utf8
 
-gemtest:
+test:
   <<: *<%= ENV['DB'] || 'SQLITE3MEM' %>

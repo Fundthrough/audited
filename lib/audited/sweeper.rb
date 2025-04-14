@@ -1,16 +1,18 @@
+# frozen_string_literal: true
+
 module Audited
   class Sweeper
     STORED_DATA = {
       current_remote_address: :remote_ip,
       current_request_uuid: :request_uuid,
-      current_user: :current_user
+      current_user: :current_user,
     }
 
     delegate :store, to: ::Audited
 
     def around(controller)
       self.controller = controller
-      STORED_DATA.each { |k,m| store[k] = send(m) }
+      STORED_DATA.each { |k, m| store[k] = send(m) }
       yield
     ensure
       self.controller = nil
@@ -36,14 +38,5 @@ module Audited
     def controller=(value)
       store[:current_controller] = value
     end
-  end
-end
-
-ActiveSupport.on_load(:action_controller) do
-  if defined?(ActionController::Base)
-    ActionController::Base.around_action Audited::Sweeper.new
-  end
-  if defined?(ActionController::API)
-    ActionController::API.around_action Audited::Sweeper.new
   end
 end
